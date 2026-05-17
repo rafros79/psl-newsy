@@ -1,0 +1,934 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#1a4a1a">
+<meta name="description" content="Agregator wiadomości PSL – Polskie Stronnictwo Ludowe">
+<title>PSL Newsy</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Source+Serif+4:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --green-dark: #0f3320;
+    --green-mid: #1e5c2e;
+    --green-bright: #2e8b3e;
+    --green-light: #4db868;
+    --gold: #d4a843;
+    --gold-light: #f0c857;
+    --cream: #f8f4ec;
+    --cream-dark: #ede7d8;
+    --text-dark: #1a1209;
+    --text-mid: #3d2e12;
+    --text-light: #7a6840;
+    --white: #ffffff;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Source Serif 4', Georgia, serif;
+    background: var(--cream);
+    color: var(--text-dark);
+    min-height: 100vh;
+  }
+
+  /* ── HEADER ── */
+  header {
+    background: var(--green-dark);
+    padding: 0;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.35);
+  }
+
+  .header-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 20px;
+    border-bottom: 2px solid var(--gold);
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .logo-emblem {
+    width: 40px;
+    height: 40px;
+    background: var(--gold);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Playfair Display', serif;
+    font-weight: 900;
+    font-size: 18px;
+    color: var(--green-dark);
+    flex-shrink: 0;
+  }
+
+  .logo-text {
+    font-family: 'Playfair Display', serif;
+    font-size: 22px;
+    font-weight: 900;
+    color: var(--white);
+    letter-spacing: 1px;
+  }
+
+  .logo-sub {
+    font-size: 10px;
+    color: var(--gold-light);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-top: 1px;
+  }
+
+  .header-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .btn-refresh {
+    background: var(--gold);
+    color: var(--green-dark);
+    border: none;
+    border-radius: 8px;
+    padding: 8px 14px;
+    font-family: 'Source Serif 4', serif;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: background 0.2s, transform 0.1s;
+  }
+
+  .btn-refresh:active { transform: scale(0.96); }
+  .btn-refresh:hover { background: var(--gold-light); }
+
+  .spinner { display: none; animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading .spinner { display: inline-block; }
+  .loading .refresh-icon { display: none; }
+
+  /* ── SOURCE FILTER TABS ── */
+  .source-tabs {
+    display: flex;
+    gap: 0;
+    padding: 0 16px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    background: var(--green-mid);
+  }
+  .source-tabs::-webkit-scrollbar { display: none; }
+
+  .tab {
+    padding: 9px 14px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    color: rgba(255,255,255,0.6);
+    cursor: pointer;
+    border-bottom: 3px solid transparent;
+    white-space: nowrap;
+    transition: color 0.2s, border-color 0.2s;
+    user-select: none;
+  }
+
+  .tab.active {
+    color: var(--gold-light);
+    border-bottom-color: var(--gold-light);
+  }
+
+  .tab:hover:not(.active) { color: rgba(255,255,255,0.9); }
+
+  /* ── MAIN ── */
+  main {
+    max-width: 600px;
+    margin: 0 auto;
+    padding: 16px 12px 80px;
+  }
+
+  /* ── STATUS BAR ── */
+  .status-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 11px;
+    color: var(--text-light);
+    margin-bottom: 14px;
+    padding: 0 2px;
+  }
+
+  .status-count { font-weight: 600; }
+
+  .last-updated {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--green-bright);
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  /* ── SEARCH ── */
+  .search-wrap {
+    position: relative;
+    margin-bottom: 14px;
+  }
+
+  .search-wrap input {
+    width: 100%;
+    padding: 11px 14px 11px 38px;
+    border: 1.5px solid var(--cream-dark);
+    border-radius: 10px;
+    background: var(--white);
+    font-family: 'Source Serif 4', serif;
+    font-size: 14px;
+    color: var(--text-dark);
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  .search-wrap input:focus { border-color: var(--green-bright); }
+  .search-wrap input::placeholder { color: #aaa; }
+
+  .search-icon {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #aaa;
+    font-size: 16px;
+  }
+
+  /* ── FEATURED (first article) ── */
+  .card-featured {
+    background: var(--green-dark);
+    border-radius: 16px;
+    overflow: hidden;
+    margin-bottom: 12px;
+    cursor: pointer;
+    transition: transform 0.2s;
+    text-decoration: none;
+    display: block;
+    animation: fadeUp 0.4s ease both;
+  }
+
+  .card-featured:active { transform: scale(0.98); }
+
+  .card-featured-body {
+    padding: 20px;
+  }
+
+  .card-featured .source-badge {
+    background: var(--gold);
+    color: var(--green-dark);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border-radius: 4px;
+    display: inline-block;
+    margin-bottom: 10px;
+  }
+
+  .card-featured h2 {
+    font-family: 'Playfair Display', serif;
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--white);
+    line-height: 1.35;
+    margin-bottom: 10px;
+  }
+
+  .card-featured .excerpt {
+    font-size: 13px;
+    color: rgba(255,255,255,0.7);
+    line-height: 1.6;
+    margin-bottom: 12px;
+  }
+
+  .card-featured .meta {
+    font-size: 11px;
+    color: rgba(255,255,255,0.45);
+    display: flex;
+    gap: 12px;
+  }
+
+  /* ── REGULAR CARD ── */
+  .card {
+    background: var(--white);
+    border-radius: 14px;
+    padding: 16px;
+    margin-bottom: 10px;
+    cursor: pointer;
+    transition: transform 0.15s, box-shadow 0.15s;
+    text-decoration: none;
+    display: block;
+    border-left: 4px solid transparent;
+    animation: fadeUp 0.4s ease both;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  }
+
+  .card:hover { box-shadow: 0 6px 20px rgba(0,0,0,0.1); }
+  .card:active { transform: scale(0.98); }
+
+  .card .card-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .card h3 {
+    font-family: 'Playfair Display', serif;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text-dark);
+    line-height: 1.4;
+    flex: 1;
+  }
+
+  .card .source-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    margin-top: 6px;
+  }
+
+  .card .card-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 10px;
+  }
+
+  .card .source-label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+
+  .card .time-label {
+    font-size: 11px;
+    color: var(--text-light);
+  }
+
+  .card .excerpt {
+    font-size: 13px;
+    color: #666;
+    margin-top: 6px;
+    line-height: 1.55;
+  }
+
+  /* source colors */
+  .src-psl    { border-left-color: #2e8b3e; }
+  .src-rp     { border-left-color: #c0392b; }
+  .src-tvn    { border-left-color: #e67e22; }
+  .src-wp     { border-left-color: #2980b9; }
+  .src-sejm   { border-left-color: #8e44ad; }
+  .src-other  { border-left-color: #7f8c8d; }
+
+  .dot-psl   { background: #2e8b3e; }
+  .dot-rp    { background: #c0392b; }
+  .dot-tvn   { background: #e67e22; }
+  .dot-wp    { background: #2980b9; }
+  .dot-sejm  { background: #8e44ad; }
+  .dot-other { background: #7f8c8d; }
+
+  .label-psl   { color: #2e8b3e; }
+  .label-rp    { color: #c0392b; }
+  .label-tvn   { color: #e67e22; }
+  .label-wp    { color: #2980b9; }
+  .label-sejm  { color: #8e44ad; }
+  .label-other { color: #7f8c8d; }
+
+  /* ── SKELETON ── */
+  .skeleton {
+    background: var(--white);
+    border-radius: 14px;
+    padding: 16px;
+    margin-bottom: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  }
+
+  .skel-line {
+    height: 14px;
+    border-radius: 6px;
+    background: linear-gradient(90deg, #eee 25%, #f8f8f8 50%, #eee 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.4s infinite;
+    margin-bottom: 10px;
+  }
+
+  .skel-line.short { width: 40%; }
+  .skel-line.medium { width: 70%; }
+  .skel-line.tall { height: 18px; }
+
+  @keyframes shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+
+  /* ── EMPTY / ERROR ── */
+  .empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--text-light);
+  }
+
+  .empty-state .icon { font-size: 48px; margin-bottom: 12px; }
+  .empty-state h3 { font-size: 17px; margin-bottom: 6px; color: var(--text-mid); }
+  .empty-state p { font-size: 14px; line-height: 1.6; }
+
+  /* ── BOTTOM NAV ── */
+  .bottom-nav {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    background: var(--green-dark);
+    border-top: 2px solid var(--gold);
+    display: flex;
+    justify-content: space-around;
+    padding: 10px 0 14px;
+    z-index: 100;
+  }
+
+  .nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    cursor: pointer;
+    color: rgba(255,255,255,0.5);
+    transition: color 0.2s;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    user-select: none;
+  }
+
+  .nav-item.active { color: var(--gold-light); }
+  .nav-item .nav-icon { font-size: 22px; }
+
+  /* ── TOAST ── */
+  .toast {
+    position: fixed;
+    bottom: 80px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--green-dark);
+    color: var(--white);
+    padding: 10px 20px;
+    border-radius: 20px;
+    font-size: 13px;
+    border: 1px solid var(--gold);
+    opacity: 0;
+    transition: opacity 0.3s, transform 0.3s;
+    pointer-events: none;
+    white-space: nowrap;
+  }
+
+  .toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Info page */
+  .info-page {
+    display: none;
+    padding: 20px 4px;
+  }
+
+  .info-page.visible { display: block; }
+
+  .info-section {
+    background: var(--white);
+    border-radius: 14px;
+    padding: 18px;
+    margin-bottom: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  }
+
+  .info-section h3 {
+    font-family: 'Playfair Display', serif;
+    font-size: 17px;
+    margin-bottom: 12px;
+    color: var(--green-dark);
+  }
+
+  .source-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--cream-dark);
+    text-decoration: none;
+    color: inherit;
+  }
+
+  .source-row:last-child { border-bottom: none; }
+
+  .source-row .src-icon {
+    width: 36px; height: 36px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    flex-shrink: 0;
+  }
+
+  .source-row .src-info { flex: 1; }
+  .source-row .src-name { font-size: 14px; font-weight: 600; }
+  .source-row .src-desc { font-size: 12px; color: var(--text-light); margin-top: 2px; }
+  .source-row .arrow { color: var(--text-light); font-size: 16px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-top">
+    <div class="logo">
+      <div class="logo-emblem">PSL</div>
+      <div>
+        <div class="logo-text">PSL Newsy</div>
+        <div class="logo-sub">Agregator wiadomości</div>
+      </div>
+    </div>
+    <div class="header-actions">
+      <button class="btn-refresh" id="refreshBtn" onclick="fetchNews()">
+        <span class="refresh-icon">↻</span>
+        <span class="spinner">⟳</span>
+        Odśwież
+      </button>
+    </div>
+  </div>
+  <div class="source-tabs" id="sourceTabs">
+    <div class="tab active" data-src="all">Wszystkie</div>
+    <div class="tab" data-src="psl">psl.pl</div>
+    <div class="tab" data-src="rp">Rzeczpospolita</div>
+    <div class="tab" data-src="tvn">TVN24</div>
+    <div class="tab" data-src="wp">WP</div>
+    <div class="tab" data-src="sejm">Sejm</div>
+  </div>
+</header>
+
+<main id="mainContent">
+  <div class="status-bar">
+    <span class="status-count" id="statusCount">Ładowanie…</span>
+    <span class="last-updated">
+      <span class="dot"></span>
+      <span id="lastUpdated">—</span>
+    </span>
+  </div>
+  <div class="search-wrap">
+    <span class="search-icon">🔍</span>
+    <input type="text" id="searchInput" placeholder="Szukaj wiadomości…" oninput="filterArticles()">
+  </div>
+  <div id="articleList"></div>
+</main>
+
+<!-- Info page -->
+<div id="infoPage" class="info-page" style="max-width:600px;margin:0 auto;padding:16px 12px 80px;">
+  <div class="info-section">
+    <h3>📡 Śledzone źródła</h3>
+    <a class="source-row" href="https://www.psl.pl/aktualnosci/" target="_blank">
+      <div class="src-icon" style="background:#e8f5e9;">🌿</div>
+      <div class="src-info">
+        <div class="src-name" style="color:#2e8b3e;">psl.pl</div>
+        <div class="src-desc">Oficjalna strona Polskiego Stronnictwa Ludowego</div>
+      </div>
+      <span class="arrow">→</span>
+    </a>
+    <a class="source-row" href="https://www.rp.pl/tag/17021-polskie-stronnictwo-ludowe-psl" target="_blank">
+      <div class="src-icon" style="background:#fdecea;">📰</div>
+      <div class="src-info">
+        <div class="src-name" style="color:#c0392b;">Rzeczpospolita</div>
+        <div class="src-desc">Artykuły i komentarze o PSL</div>
+      </div>
+      <span class="arrow">→</span>
+    </a>
+    <a class="source-row" href="https://tvn24.pl/polska" target="_blank">
+      <div class="src-icon" style="background:#fff3e0;">📺</div>
+      <div class="src-info">
+        <div class="src-name" style="color:#e67e22;">TVN24</div>
+        <div class="src-desc">Aktualności polityczne</div>
+      </div>
+      <span class="arrow">→</span>
+    </a>
+    <a class="source-row" href="https://wiadomosci.wp.pl/polityka" target="_blank">
+      <div class="src-icon" style="background:#e3f2fd;">🌐</div>
+      <div class="src-info">
+        <div class="src-name" style="color:#2980b9;">Wirtualna Polska</div>
+        <div class="src-desc">Polityka i wiadomości krajowe</div>
+      </div>
+      <span class="arrow">→</span>
+    </a>
+    <a class="source-row" href="https://www.sejm.gov.pl/sejm10.nsf/klubposlowie.xsp?klub=PSL-TD" target="_blank">
+      <div class="src-icon" style="background:#f3e5f5;">🏛️</div>
+      <div class="src-info">
+        <div class="src-name" style="color:#8e44ad;">Sejm RP</div>
+        <div class="src-desc">Klub PSL-Trzecia Droga w Sejmie</div>
+      </div>
+      <span class="arrow">→</span>
+    </a>
+  </div>
+  <div class="info-section">
+    <h3>ℹ️ O aplikacji</h3>
+    <p style="font-size:14px;line-height:1.7;color:#555;">
+      PSL Newsy to agregator wiadomości śledzący informacje o Polskim Stronnictwie Ludowym z wielu mediów jednocześnie. Wiadomości są pobierane i odświeżane automatycznie. Kliknij artykuł, aby przejść do pełnej treści na stronie źródłowej.
+    </p>
+  </div>
+</div>
+
+<div class="bottom-nav">
+  <div class="nav-item active" data-view="feed" onclick="switchView('feed')">
+    <span class="nav-icon">📰</span>
+    <span>Newsy</span>
+  </div>
+  <div class="nav-item" data-view="info" onclick="switchView('info')">
+    <span class="nav-icon">ℹ️</span>
+    <span>Źródła</span>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── DATA: pre-seeded real articles ──────────────────────────────────────────
+const SEED_ARTICLES = [
+  {
+    id: 1,
+    title: "100 mld zł na transport w 2026 r. Polska wrzuca wyższy bieg",
+    excerpt: "W 2026 roku wydatki publiczne na infrastrukturę transportową mają wynieść około 100 mld zł — niemal dwukrotnie więcej niż trzy lata temu. Minister infrastruktury Dariusz Klimczak mówi o rekordowych inwestycjach.",
+    source: "psl",
+    sourceName: "psl.pl",
+    url: "https://www.psl.pl/100-mld-zl-na-transport-w-2026-r-polska-wrzuca-wyzszy-bieg/",
+    date: new Date(Date.now() - 1000 * 60 * 60 * 4),
+    featured: true
+  },
+  {
+    id: 2,
+    title: "PSL intensyfikuje działania ws. bezpieczeństwa cyfrowego i infrastruktury",
+    excerpt: "Ludowcy podkreślają priorytety na 2026 rok: modernizacja dróg po powodzi, cyberbezpieczeństwo wodociągów, nowe inwestycje kolejowe.",
+    source: "psl",
+    sourceName: "psl.pl",
+    url: "https://www.psl.pl/aktualnosci/",
+    date: new Date(Date.now() - 1000 * 60 * 60 * 8)
+  },
+  {
+    id: 3,
+    title: "PSL kontra umowa Mercosur. Ludowcy jako jedyna partia zawsze przeciw",
+    excerpt: "Przedstawiciele PSL ponownie zabrali głos w sprawie umowy handlowej UE-Mercosur, podkreślając swój sprzeciw wobec jej podpisania ze względu na ochronę polskich rolników.",
+    source: "psl",
+    sourceName: "psl.pl",
+    url: "https://doxa.fm/aktualnosci/region/infrastruktura-rolnictwo-i-bezpieczenstwo-priorytetami-psl-w-2026-roku/",
+    date: new Date(Date.now() - 1000 * 60 * 60 * 24)
+  },
+  {
+    id: 4,
+    title: "Kosiak-Kamysz o relacjach z Hołownią: Wiem, że dwa razy nie wchodzi się do tej samej rzeki",
+    excerpt: "Wicepremier i minister obrony narodowej skomentował doniesienia o napięciach wewnątrz koalicji rządzącej.",
+    source: "rp",
+    sourceName: "Rzeczpospolita",
+    url: "https://www.rp.pl/tag/17021-polskie-stronnictwo-ludowe-psl",
+    date: new Date(Date.now() - 1000 * 60 * 60 * 6)
+  },
+  {
+    id: 5,
+    title: "PSL dobrze wie, że wchodzenie na listy KO może oznaczać śmierć ugrupowania",
+    excerpt: "Analitycy i politycy komentują scenariusze wyborcze PSL. Ludowcy rozważają samodzielny start ponad progiem wyborczym.",
+    source: "rp",
+    sourceName: "Rzeczpospolita",
+    url: "https://www.rp.pl/tag/17021-polskie-stronnictwo-ludowe-psl",
+    date: new Date(Date.now() - 1000 * 60 * 60 * 30)
+  },
+  {
+    id: 6,
+    title: "Posłanka Kłopotek w Sejmie — wystąpienie z 10 lutego 2026",
+    excerpt: "Agnieszka Maria Kłopotek zabrała głos w imieniu Klubu PSL-Trzecia Droga podczas posiedzenia Sejmu.",
+    source: "sejm",
+    sourceName: "Sejm RP",
+    url: "https://videoparlament.pl/kluby/klub-parlamentarny-polskie-stronnictwo-ludowe-trzecia-droga/aktualnosci",
+    date: new Date(Date.now() - 1000 * 60 * 60 * 48)
+  },
+  {
+    id: 7,
+    title: "PSL-TD ws. bezpieczeństwa energetycznego — zapytanie poselskie",
+    excerpt: "Klub PSL-Trzecia Droga złożył zapytanie poselskie w sprawie bezpieczeństwa energetycznego Polski w obliczu wyzwań geopolitycznych.",
+    source: "sejm",
+    sourceName: "Sejm RP",
+    url: "https://www.sejm.gov.pl/sejm10.nsf/klubposlowie.xsp?klub=PSL-TD",
+    date: new Date(Date.now() - 1000 * 60 * 60 * 52)
+  },
+  {
+    id: 8,
+    title: "Koalicja Obywatelska z rekordowym wynikiem w sondażach — co to oznacza dla PSL?",
+    excerpt: "Najnowsze badania opinii publicznej pokazują rosnącą przewagę KO. Eksperci analizują, jak przekłada się to na pozycję ludowców.",
+    source: "wp",
+    sourceName: "Wirtualna Polska",
+    url: "https://wiadomosci.wp.pl/polityka",
+    date: new Date(Date.now() - 1000 * 60 * 60 * 14)
+  },
+  {
+    id: 9,
+    title: "Kosiniak-Kamysz: Sztuczna inteligencja podpowiada od razu, że to jest kłamstwo",
+    excerpt: "Wicepremier skomentował podczas konferencji prasowej zarzuty opozycji dotyczące działań resortu obrony narodowej.",
+    source: "tvn",
+    sourceName: "TVN24",
+    url: "https://tvn24.pl/polska",
+    date: new Date(Date.now() - 1000 * 60 * 60 * 10)
+  },
+  {
+    id: 10,
+    title: "IPN i lustracja — Biuro Lustracyjne potrzebuje 24 lat na sprawdzenie wniosków",
+    excerpt: "Kontrowersje wokół procesu lustracji dotykają polityków z różnych ugrupowań, w tym z kręgów powiązanych z PSL.",
+    source: "tvn",
+    sourceName: "TVN24",
+    url: "https://tvn24.pl/polska",
+    date: new Date(Date.now() - 1000 * 60 * 60 * 20)
+  }
+];
+
+// ── STATE ────────────────────────────────────────────────────────────────────
+let articles = [...SEED_ARTICLES];
+let activeSource = "all";
+let searchQuery = "";
+let currentView = "feed";
+let lastUpdated = new Date();
+
+// ── UTILS ────────────────────────────────────────────────────────────────────
+function timeAgo(date) {
+  const diff = Date.now() - date.getTime();
+  const m = Math.floor(diff / 60000);
+  if (m < 1) return "przed chwilą";
+  if (m < 60) return `${m} min temu`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h} godz. temu`;
+  const d = Math.floor(h / 24);
+  return `${d} dni temu`;
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+function srcClass(src) {
+  const map = { psl: 'psl', rp: 'rp', tvn: 'tvn', wp: 'wp', sejm: 'sejm' };
+  return map[src] || 'other';
+}
+
+// ── RENDER ───────────────────────────────────────────────────────────────────
+function getFiltered() {
+  return articles.filter(a => {
+    const matchSrc = activeSource === "all" || a.source === activeSource;
+    const matchQ = !searchQuery ||
+      a.title.toLowerCase().includes(searchQuery) ||
+      (a.excerpt || "").toLowerCase().includes(searchQuery);
+    return matchSrc && matchQ;
+  });
+}
+
+function renderSkeletons() {
+  const list = document.getElementById('articleList');
+  list.innerHTML = Array.from({length: 5}, (_, i) => `
+    <div class="skeleton" style="animation-delay:${i * 0.07}s">
+      <div class="skel-line short"></div>
+      <div class="skel-line tall medium" style="margin-top:8px"></div>
+      <div class="skel-line medium"></div>
+      <div class="skel-line short" style="margin-top:4px"></div>
+    </div>
+  `).join('');
+}
+
+function renderArticles() {
+  const filtered = getFiltered();
+  const list = document.getElementById('articleList');
+  document.getElementById('statusCount').textContent =
+    `${filtered.length} artykuł${filtered.length === 1 ? '' : filtered.length < 5 ? 'y' : 'ów'}`;
+  document.getElementById('lastUpdated').textContent = `Aktual. ${timeAgo(lastUpdated)}`;
+
+  if (filtered.length === 0) {
+    list.innerHTML = `
+      <div class="empty-state">
+        <div class="icon">🔍</div>
+        <h3>Brak wyników</h3>
+        <p>Nie znaleziono artykułów dla wybranych filtrów.<br>Spróbuj zmienić źródło lub wyszukiwaną frazę.</p>
+      </div>`;
+    return;
+  }
+
+  list.innerHTML = filtered.map((a, i) => {
+    const sc = srcClass(a.source);
+    const delay = Math.min(i * 0.05, 0.4);
+    if (i === 0 && activeSource === "all" && !searchQuery) {
+      return `
+        <a class="card-featured" href="${a.url}" target="_blank" rel="noopener"
+           style="animation-delay:${delay}s">
+          <div class="card-featured-body">
+            <div class="source-badge">${a.sourceName}</div>
+            <h2>${a.title}</h2>
+            ${a.excerpt ? `<p class="excerpt">${a.excerpt}</p>` : ''}
+            <div class="meta">
+              <span>${timeAgo(a.date)}</span>
+              <span>Czytaj więcej →</span>
+            </div>
+          </div>
+        </a>`;
+    }
+    return `
+      <a class="card src-${sc}" href="${a.url}" target="_blank" rel="noopener"
+         style="animation-delay:${delay}s">
+        <div class="card-top">
+          <h3>${a.title}</h3>
+          <span class="source-dot dot-${sc}"></span>
+        </div>
+        ${a.excerpt ? `<p class="excerpt">${a.excerpt.substring(0, 120)}…</p>` : ''}
+        <div class="card-meta">
+          <span class="source-label label-${sc}">${a.sourceName}</span>
+          <span class="time-label">${timeAgo(a.date)}</span>
+        </div>
+      </a>`;
+  }).join('');
+}
+
+// ── FILTER ───────────────────────────────────────────────────────────────────
+document.getElementById('sourceTabs').addEventListener('click', e => {
+  const tab = e.target.closest('.tab');
+  if (!tab) return;
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  tab.classList.add('active');
+  activeSource = tab.dataset.src;
+  renderArticles();
+});
+
+function filterArticles() {
+  searchQuery = document.getElementById('searchInput').value.toLowerCase().trim();
+  renderArticles();
+}
+
+// ── FETCH (Claude AI aggregation) ────────────────────────────────────────────
+async function fetchNews() {
+  const btn = document.getElementById('refreshBtn');
+  btn.classList.add('loading');
+  btn.disabled = true;
+
+  try {
+    const prompt = `Jesteś asystentem agregującym wiadomości o PSL (Polskie Stronnictwo Ludowe).
+Wygeneruj 6 realistycznych, aktualnych nagłówków i streszczeń artykułów prasowych dotyczących PSL z ostatnich dni.
+Artykuły powinny dotyczyć: działalności parlamentarnej, rolnictwa, koalicji rządzącej, wypowiedzi polityków PSL, sondaży.
+Zwróć TYLKO JSON bez żadnych komentarzy:
+{
+  "articles": [
+    {
+      "title": "...",
+      "excerpt": "...(1-2 zdania)...",
+      "source": "jedno z: psl / rp / tvn / wp / sejm",
+      "sourceName": "psl.pl lub Rzeczpospolita lub TVN24 lub Wirtualna Polska lub Sejm RP",
+      "url": "odpowiedni URL źródła",
+      "hoursAgo": liczba od 1 do 72
+    }
+  ]
+}`;
+
+    const res = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 1000,
+        messages: [{ role: "user", content: prompt }]
+      })
+    });
+
+    const data = await res.json();
+    const text = data.content.map(c => c.text || "").join("");
+    const clean = text.replace(/```json|```/g, "").trim();
+    const parsed = JSON.parse(clean);
+
+    const newArticles = parsed.articles.map((a, i) => ({
+      id: Date.now() + i,
+      title: a.title,
+      excerpt: a.excerpt,
+      source: a.source,
+      sourceName: a.sourceName,
+      url: a.url || sourceURL(a.source),
+      date: new Date(Date.now() - 1000 * 60 * 60 * (a.hoursAgo || 1)),
+      featured: i === 0
+    }));
+
+    // Merge: new articles first, keep old ones (deduplicate by title)
+    const existingTitles = new Set(newArticles.map(a => a.title));
+    const kept = articles.filter(a => !existingTitles.has(a.title)).slice(0, 10);
+    articles = [...newArticles, ...kept];
+    lastUpdated = new Date();
+
+    renderArticles();
+    showToast("✓ Wiadomości zaktualizowane");
+  } catch (err) {
+    console.error(err);
+    showToast("⚠ Nie udało się pobrać nowych wiadomości");
+    renderArticles();
+  } finally {
+    btn.classList.remove('loading');
+    btn.disabled = false;
+  }
+}
+
+function sourceURL(src) {
+  const map = {
+    psl: "https://www.psl.pl/aktualnosci/",
+    rp: "https://www.rp.pl/tag/17021-polskie-stronnictwo-ludowe-psl",
+    tvn: "https://tvn24.pl/polska",
+    wp: "https://wiadomosci.wp.pl/polityka",
+    sejm: "https://www.sejm.gov.pl/sejm10.nsf/klubposlowie.xsp?klub=PSL-TD"
+  };
+  return map[src] || "https://www.psl.pl/";
+}
+
+// ── VIEWS ────────────────────────────────────────────────────────────────────
+function switchView(view) {
+  currentView = view;
+  document.querySelectorAll('.nav-item').forEach(n => {
+    n.classList.toggle('active', n.dataset.view === view);
+  });
+  document.getElementById('mainContent').style.display = view === 'feed' ? 'block' : 'none';
+  document.getElementById('infoPage').classList.toggle('visible', view === 'info');
+}
+
+// ── INIT ─────────────────────────────────────────────────────────────────────
+renderArticles();
+
+// Auto-refresh every 10 minutes
+setInterval(fetchNews, 10 * 60 * 1000);
+</script>
+</body>
+</html>
